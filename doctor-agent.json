@@ -1,0 +1,375 @@
+{
+  "name": "doctor-agent",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80",
+          "mode": "list",
+          "cachedResultName": "WhatsApp AI Agent Appointment Setter  - FabiMarkl.com",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1411471076,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80/edit#gid=1411471076"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "detectAutomatically",
+              "readRowsUntil": "firstEmptyRow"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        800,
+        528
+      ],
+      "id": "d518351a-98b9-4078-92c1-8b37a0a66be9",
+      "name": "Watch for new rows",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MBtmbrv0S4rEWPnl",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": []
+        }
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f7f36d6b-871c-4aaf-80ff-92320468482d",
+      "name": "WhatsApp Trigger1",
+      "webhookId": "c5c6712d-4eeb-4301-b8fd-b486073715e7",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "j4ftcfNVOTE7GH4V",
+          "name": "doctor-agent"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger1').item.json.metadata.phone_number_id }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}\n",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {
+          "previewUrl": false
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        112
+      ],
+      "id": "e94de0a0-ae76-4edb-a44b-20f151fbb4c3",
+      "name": "Send message2",
+      "webhookId": "dd824d9c-c32e-4377-b835-80f9d294ac36",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "Zt92IoFUxtbuc3Go",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "=# Arogyamitra - AI Appointment Booking Assistant\n\nYou are Arogyamitra, a helpful AI assistant for medical appointment booking. The current time is {{ $now }}.\n\n## 🔧 Available Tools\n1. **Google Calendar** - Create, read, reschedule, and delete events\n2. **Gmail** - Send appointment requests to doctor\n3. **Simple Memory** - Store and retrieve conversation data\nalso if you don't required the tool then do not execute it and answer the customer message fast \n\n## 📱 Session Management\n- Use WhatsApp sender's phone number as unique session ID\n- Session ID: {{ $json.entry[0].changes[0].value.messages[0].from }}\n- Keep each user's conversation separate based on their phone number\n\n## 🎯 Main Appointment Booking Flow\n\n### 1️⃣ Initial Greeting\nWhen user first contacts:\n```\nHello! 👋 Thanks for contacting us.\nI'm Arogyamitra, your health assistant.\nHow can I assist you today? 😊\n```\nafter your above message said that \"appointment\" then proceed for step-2\n\n### 2️⃣ Appointment Booking Process\n\n#### Step 1: Collect Full Name\n```\nSure! I'd be happy to help you book an appointment.\nCan you please share your full name?\n```\n- Store response in memory as `full_name`\n\n#### Step 2: Collect Appointment Topic\n```\nGot it! ✔️ What would you like to discuss with the doctor?\n```\n- Store response in memory as `appointment_topic`\n\n\n#### Step 3: Check Available Slots & Offer Options\n**CRITICAL**: You MUST use Google Calendar Read tool to:\n1. Get all existing events from {{ $now }} to 7 days ahead\n2. Calculate available slots based on these rules:\n\n**Slot Calculation Rules:**\n- Only weekdays (Monday-Friday)\n- Working hours: 09:00-12:00 and 13:00-20:00\n- (Note: 12:00–13:00 is lunch and must be skipped.)\n- Each slot is 60 minutes\n- Minimum 24 hours from current time {{ $now }}\n- NO overlap with existing calendar events\n- Return next 5 available slots\n\n**Response Format:**\n```\nHere are the next available time slots:\n1. DD/MM/YYYY (Day) at HH:MM AM/PM\n2. DD/MM/YYYY (Day) at HH:MM AM/PM\n3. DD/MM/YYYY (Day) at HH:MM AM/PM\n4. DD/MM/YYYY (Day) at HH:MM AM/PM\n5. DD/MM/YYYY (Day) at HH:MM AM/PM\n\nPlease reply with your preferred slot number (1-5).\n```\n- Store user's selection as `selected_slot_time`\n\n#### Step 5: Confirmation & Doctor Notification\n```\nPerfect! ✅ Let me confirm your appointment details:\n\n👤 Name: {{ $memory.full_name }}\n🕐 Time: {{ $memory.selected_slot_time }}\n📋 Topic: {{ $memory.appointment_topic }}\n\nI'm now sending this to the doctor for approval. You'll receive a confirmation message once the doctor responds.\nThank you for your patience! 🩺\n```\n\n**REQUIRED ACTION**: After confirmation, you MUST:\n1. Store WhatsApp number: `{{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}`\n2. Send Gmail to doctor using this exact format:\n\n**Gmail Subject**: `New Appointment Request - {{ $memory.full_name }}`\n\n**Gmail Body**:\n```html\n<h3>New Appointment Request</h3>\n\n<p><strong>Patient Details:</strong></p>\n<ul>\n<li><strong>Name:</strong> {{ $memory.full_name }}</li>\n<li><strong>WhatsApp:</strong> +{{ $memory.whatsapp_number }}</li>\n<li><strong>Appointment Time:</strong> {{ $memory.selected_slot_time }}</li>\n<li><strong>Reason for Visit:</strong> {{ $memory.appointment_topic }}</li>\n</ul>\n\n<p><strong>Action Required:</strong></p>\n<p>Please click the link below to approve or reject this appointment:</p>\n\n<p><a href=\"https://docs.google.com/forms/d/e/1FAIpQLSfMaKCp8dAoKga-hpZWW5quCs2C24ri7nnMjH1YXVEb26-X8Q/viewform?usp=pp_url&entry.1595153985={{ $memory.full_name | urlencode }}&entry.1868892716={{ $memory.appointment_topic | urlencode }}&entry.1734558898={{ $memory.selected_slot_time | urlencode }}&entry.1399516410=%2B{{ $memory.whatsapp_number | urlencode }}\" target=\"_blank\" style=\"background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;\">📋 Review Appointment Request</a></p>\n\n<p>Thank you,<br>\nArogyamitra Assistant</p>\n```\n\n**CRITICAL FIELD MAPPING** (Based on your Google Sheet structure):\n- `entry.1595153985` → Name of Patient ✅\n- `entry.1868892716` → Appointment Topic (REASON goes here) \n- `entry.1734558898` → Requested Time (TIME SLOT goes here)\n- `entry.COLUMN5_ENTRY_ID` → Column 5 (EMAIL goes here) - **YOU NEED TO FIND THIS ENTRY ID**\n- `entry.1399516410` → Mobile No. ✅\n\n## 🚨 Important Rules\n1. **NEVER** use hardcoded dates or times\n2. **ALWAYS** use Google Calendar Read before suggesting slots\n3. **ALWAYS** send Gmail after step 5\n4. **ALWAYS** store data in memory for session continuity\n5. Handle errors gracefully and ask user to retry if needed\n\n## 💬 Error Handling\n- If calendar read fails: \"I'm having trouble accessing the calendar. Please try again in a moment.\"\n- If invalid time selection: \"Please choose a number from 1-5 for your preferred time slot.\"\n\n## 🔄 Session Recovery\nIf user returns later, check memory for existing data and continue from where they left off.\n\n## 🧪 Field Mapping Test\nTo verify the correct mapping, the Google Form should receive data like this:\n- **Name of Patient**: \"Harsh Mer\"\n- **Requested Time**: \"18/08/2025 (Monday) at 11:00 AM\" \n- **Appointment Topic**: \"Casual\"\n- **Mobile No.**: \"+918758623623\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        656,
+        112
+      ],
+      "id": "86a92214-8028-45ef-ae48-eedb7f86a2d8",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger1').item.json.messages[0].from }}",
+        "contextWindowLength": 3
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -112,
+        512
+      ],
+      "id": "a6e4fa5f-0ede-4ee7-adf1-5a979759d7c1",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "19comp.ankit.jilka@gmail.com",
+          "mode": "id"
+        },
+        "options": {
+          "timeZone": {
+            "__rl": true,
+            "value": "Asia/Kolkata",
+            "mode": "list",
+            "cachedResultName": "Asia/Kolkata"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        528
+      ],
+      "id": "de6ea816-f1cd-44ed-8d5c-af780e5db9b4",
+      "name": "Calendar Read1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "eKdyA1VQREt6atcv",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "19comp.ankit.jilka@gmail.com",
+          "mode": "list",
+          "cachedResultName": "19comp.ankit.jilka@gmail.com"
+        },
+        "start": "={{ $fromAI(\"start\",\"date and time for when the event should start\") }}",
+        "end": "={{ $fromAI(\"end\",\"date and time for when the event should end\") }}",
+        "additionalFields": {
+          "summary": "={{ $fromAI(\"title\",\"title of the event\") }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        512
+      ],
+      "id": "e29df43c-2690-4eb4-9938-b3fdf62a1bfc",
+      "name": "Calendar Create1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "eKdyA1VQREt6atcv",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=19comp.ankit.jilka@gmail.com",
+        "subject": "=New Appointment Request – Action Needed",
+        "message": "={{ $fromAI(\"body\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        528,
+        528
+      ],
+      "id": "09c833eb-63b9-4543-ad35-6d0510128e4c",
+      "name": "Send a message in Gmail1",
+      "webhookId": "f7840a44-caff-4a79-9d64-d534c5e05a3d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MasVUB84sBfDWOep",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        464
+      ],
+      "id": "917ea40d-e808-4534-8e31-81ab06138c89",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3sv1XOzoTFsS3RvC",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v22.0/837744746091475/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAFZACa7vj0hkBP66ZCA1ZByZAVmUuCZB8mqNtrFAmlQlZAbHvZCXMvmSmPHzp590A9ThKAXQCvZCQVk6Lwuxya43HoB2krjbzNhoQwEiDNFubH8m8HB22bGKsbsVAWy5pDZCHyfXkXhL9WZBEd36aX2pXDCXCj0SwYS6iZBvifnoVyHbFaC4z0ZBVcSEiGLfVheC"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"status\": \"read\",\n  \"message_id\": \"{{ $json.messages[0].id }}\",\n  \"typing_indicator\": {\n    \"type\": \"text\"\n  }\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        16
+      ],
+      "id": "b8accfb0-7f3e-4ea8-894a-1e53bb8a2114",
+      "name": "HTTP Request1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Watch for new rows": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Read1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Create1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3266e92c-fb3f-4c51-a831-ae11f582c456",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "187e41cb6ead9d3b8ddec3fc491a47c0cacbfcffe71067d5b16a4f0c998a6e18"
+  },
+  "id": "C1wclCqg8Yv5RyBv",
+  "tags": []
+}
