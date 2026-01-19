@@ -1,0 +1,244 @@
+{
+  "name": "appointment_status",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80",
+          "mode": "list",
+          "cachedResultName": "WhatsApp AI Agent Appointment Setter  - FabiMarkl.com",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1411471076,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZfFN7rUb6-K-ld_FH2bTcpPgmfIfP4p_epPvDqLBH80/edit#gid=1411471076"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        272
+      ],
+      "id": "fed17c61-10ba-45c6-baa7-e2028e7ff80b",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "n5XcuTq8GuZLwzax",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7f501a86-68ce-41db-b4ae-9111215fa2c8",
+              "leftValue": "={{ $json['Doctor Approval'] }}",
+              "rightValue": "=Approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        272
+      ],
+      "id": "d8068389-1149-49d3-964c-35308b54bb34",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "837744746091475",
+        "recipientPhoneNumber": "={{ $('Code').item.json.patientWhatsApp.toString().replace(/\\D/g, '') }}\n",
+        "textBody": "📢 Appointment Confirmed...!!!",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "22ca177c-f853-4e5b-8614-912502f1c1ae",
+      "name": "positive-Send message",
+      "webhookId": "43e449de-8e78-4579-b728-a01f865e1d8b",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "Zt92IoFUxtbuc3Go",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "654293277776635",
+        "recipientPhoneNumber": "= {{ $json['Mobile No.'] }}",
+        "textBody": "⚠️ Appointment Not Approved",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        480
+      ],
+      "id": "67d6763c-37fe-49d3-a97f-8d20caceddc5",
+      "name": "negative-Send message",
+      "webhookId": "43e449de-8e78-4579-b728-a01f865e1d8b",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "Zt92IoFUxtbuc3Go",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "19comp.ankit.jilka@gmail.com",
+          "mode": "list",
+          "cachedResultName": "19comp.ankit.jilka@gmail.com"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "additionalFields": {
+          "attendees": [],
+          "description": "={{ $json.description }}",
+          "summary": "={{ $json.summary }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        16
+      ],
+      "id": "f577e902-ee68-426a-a578-dd5c770bc05b",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "eKdyA1VQREt6atcv",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract data with CORRECTED field mapping based on your Google Sheet structure\nconst fullName = $json[\"Name of Patient\"]; // Email is in Column 5\nconst input = $json[\"Requested Time\"]; // Time slot is in Requested Time (CORRECTED)\nconst topic = $json[\"Appointment Topic\"]; // Topic is in Appointment Topic (CORRECTED)\nconst whatsappNumber = $json[\"Mobile No.\"];\n\n// Add error handling\nif (!input || !fullName || !whatsappNumber) {\n  throw new Error(`Missing required data: fullName=${fullName}, input=${input}, whatsappNumber=${whatsappNumber}`);\n}\n\nconsole.log('Processing appointment:', {\n  fullName,\n  timeSlot: input,\n  whatsappNumber\n});\n\n// Examples: \n// \"15/08/2025 (Friday) at 10:00 AM\"\n// \"04/08/2025 Monday at 10:00 AM\"\n\ntry {\n  // Remove weekday (with or without parentheses) and \"at\"\n  const cleaned = input.replace(/\\s*\\(.*?\\)\\s*at\\s*|\\s+[A-Za-z]+\\s+at\\s+/i, ' ');\n  console.log('Cleaned time string:', cleaned);\n  \n  // Now should be: \"15/08/2025 10:00 AM\"\n  const parts = cleaned.trim().split(' ');\n  \n  if (parts.length < 3) {\n    throw new Error(`Invalid time format after cleaning: ${cleaned}`);\n  }\n  \n  const [dateStr, timeStr, ampm] = parts;\n  \n  // Parse date\n  const [day, month, year] = dateStr.split('/').map(Number);\n  \n  // Parse time\n  let [hour, minute] = timeStr.split(':').map(Number);\n  \n  // Convert to 24-hour format\n  if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;\n  if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;\n  \n  // Create Date directly in IST\n  const dateIst = new Date(year, month - 1, day, hour, minute, 0);\n  \n  // Validate the date\n  if (isNaN(dateIst.getTime())) {\n    throw new Error(`Invalid date created from: ${dateStr} ${timeStr} ${ampm}`);\n  }\n  \n  // Format RFC3339 with IST offset\n  function formatRFC3339(d) {\n    const pad = n => String(n).padStart(2, '0');\n    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}+05:30`;\n  }\n  \n  const start = formatRFC3339(dateIst);\n  const endDate = new Date(dateIst.getTime() + 60 * 60 * 1000);\n  const end = formatRFC3339(endDate);\n  \n  console.log('Generated calendar event:', {\n    start,\n    end,\n    summary: `${fullName} – Medical Consultation`\n  });\n  \n  return [{\n    json: {\n      summary: `${fullName} – ${topic}`,\n      description: `Appointment with ${fullName} about ${topic}. Patient WhatsApp: ${whatsappNumber}`,\n      start,\n      end,\n      timeZone: \"Asia/Kolkata\",\n      // Additional data for WhatsApp messages\n      patientName: fullName,\n      patientWhatsApp: whatsappNumber,\n      appointmentTime: input,\n      appointmentTopic: topic\n    }\n  }];\n  \n} catch (error) {\n  console.error('Error processing appointment time:', error);\n  throw new Error(`Failed to process appointment time \"${input}\": ${error.message}`);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        80
+      ],
+      "id": "b3c82591-0b47-49e3-917a-97ba6e943203",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "negative-Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "positive-Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "positive-Send message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c15a8cb0-9e7e-471f-b455-6d2bac0428bc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "187e41cb6ead9d3b8ddec3fc491a47c0cacbfcffe71067d5b16a4f0c998a6e18"
+  },
+  "id": "EvgHcGN1s03d7e7f",
+  "tags": []
+}
